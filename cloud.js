@@ -2,6 +2,7 @@
    After a wipe, a reinstall or a new phone: sign in and your data comes back. Works offline; syncs when it can. */
 (function () {
   'use strict';
+  const GID = '599398618418-g1ealk0av3so5o712b92mpgjho0c43s1.apps.googleusercontent.com';   // Google OAuth Client ID (public). When set, Google's own button is used and shows the app name.
   const URL_ = 'https://qbdjpmnvuedmigkobuat.supabase.co', KEY = 'sb_publishable_Qeu0RmUdyZ92Uzao6yk_HA_poFmQHH_';
   const SK = 'cloud.session', DAY = 'cloud.dismissed';
   let O = null, sess = null, busy = false, lastPushed = null, stamp = 0, state = '', timer = null;
@@ -63,15 +64,35 @@
       m.querySelector('#cl-out').onclick = () => { if (confirm('Sign out? Your data stays on this device and online.')) { store(null); close(); banner(); } };
       return;
     }
-    const m = modal('<h3>Sign in</h3><p>Sign in with Google to keep your data safe online. Restores automatically on any phone.</p><button id="cl-g">Continue with Google</button><button id="cl-x" class="g">Cancel</button>');
+    const m = modal('<h3>Sign in</h3><p>Back up your data online.</p><div id="cl-gb" style="min-height:44px;display:flex;justify-content:center"></div><button id="cl-g">Continue with Google</button><button id="cl-x" class="g">Cancel</button>');
     m.querySelector('#cl-x').onclick = close;
-    m.querySelector('#cl-g').onclick = () => { location.href = URL_ + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(location.origin + location.pathname); };
+    const redirect = () => { location.href = URL_ + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(location.origin + location.pathname); };
+    m.querySelector('#cl-g').onclick = redirect;
+    if (GID) gsi(m, redirect);
+  }
+  function loadGsi() {
+    return new Promise((res, rej) => {
+      if (window.google && google.accounts && google.accounts.id) return res();
+      const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  async function fromIdToken(cred) {
+    store(mk(await api('/auth/v1/token?grant_type=id_token', { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'google', id_token: cred }) })));
+    await finishSignIn();
+  }
+  function gsi(m) {   // Google's own button: shows your app name instead of the Supabase address
+    loadGsi().then(() => {
+      google.accounts.id.initialize({ client_id: GID, callback: (r) => { fromIdToken(r.credential).catch((e) => { const er = m.querySelector('#cl-gb'); if (er) er.textContent = e.message; }); }, use_fedcm_for_prompt: true });
+      const box = m.querySelector('#cl-gb'); if (!box) return;
+      google.accounts.id.renderButton(box, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'pill', width: 280 });
+      const fb = m.querySelector('#cl-g'); if (fb) fb.style.display = 'none';
+    }).catch(() => { /* keep the redirect button */ });
   }
   window.addEventListener('storage', (e) => { if (e.key === SK && e.newValue && !sess) { try { sess = JSON.parse(e.newValue); } catch (x) { return; } finishSignIn(); } });
   async function finishSignIn() {
     try { const r = await reconcile(true); if (r && r.choose) return choose(r.choose); } catch (e) { state = 'err'; }
     const b = document.getElementById('cl-bn'); if (b) b.remove(); start();
-    modal('<h3>Signed in ✓</h3><p>' + String((sess && sess.email) || '').replace(/[<>]/g, '') + '<br>Your data now saves online by itself.</p><button id="cl-x">OK</button>').querySelector('#cl-x').onclick = close;
+    modal('<h3>Signed in ✓</h3><p>' + String((sess && sess.email) || '').replace(/[<>]/g, '') + '</p><button id="cl-x">OK</button>').querySelector('#cl-x').onclick = close;
   }
   async function fromLink() {   // the email link brings you back here with the sign-in in the address
     const h = location.hash || ''; if (h.indexOf('access_token=') < 0 && h.indexOf('error_description=') < 0) return false;
@@ -112,5 +133,5 @@
     const go = () => { fromLink().then((used) => { if (!used) { banner(); start(); } }); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
   }
-  window.Cloud = { init, open, sync: () => sync(), signedIn: () => !!sess };
+  window.Cloud = { _idToken: fromIdToken, init, open, sync: () => sync(), signedIn: () => !!sess };
 })();
