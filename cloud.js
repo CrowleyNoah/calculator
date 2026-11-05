@@ -83,7 +83,8 @@
   window.addEventListener('storage', (e) => { if (e.key === SK && e.newValue && !sess) { try { sess = JSON.parse(e.newValue); } catch (x) { return; } finishSignIn(); } });
   async function finishSignIn() {
     try { const r = await reconcile(true); if (r && r.choose) return choose(r.choose); } catch (e) { state = 'err'; }
-    const b = document.getElementById('cl-bn'); if (b) b.remove(); close(); start();
+    const b = document.getElementById('cl-bn'); if (b) b.remove(); start();
+    modal('<h3>Signed in ✓</h3><p>' + String((sess && sess.email) || '').replace(/[<>]/g, '') + '<br>Your data now saves online by itself.</p><button id="cl-x">OK</button>').querySelector('#cl-x').onclick = close;
   }
   async function fromLink() {   // the email link brings you back here with the sign-in in the address
     const h = location.hash || ''; if (h.indexOf('access_token=') < 0 && h.indexOf('error_description=') < 0) return false;
