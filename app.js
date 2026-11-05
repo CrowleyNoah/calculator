@@ -610,7 +610,7 @@
       );
       const card3 = h('div', { class: 'card' });
       card3.append(
-        h('div', { class: 'setrow' }, h('div', {}, h('div', { text: 'Cloud save' }), h('small', { text: 'Sign in to keep your data online' })), h('button', { class: 'btn ghost', text: 'Open', onclick: () => { if (window.Cloud) Cloud.open(); } })),
+        h('div', { class: 'setrow' }, h('div', {}, h('div', { text: 'Cloud save' }), h('small', { text: 'Sign in with Google to keep your data online' })), h('button', { class: 'btn ghost', text: 'Open', onclick: () => { if (window.Cloud) Cloud.open(); } })),
         h('div', { class: 'setrow' }, h('div', { text: 'Clear history' }), h('button', { class: 'btn ghost', text: 'Clear', onclick: () => { S.history = []; store.set('history', []); toast('History cleared'); } })),
         h('div', { class: 'setrow' }, h('div', { text: 'Reset everything', }), h('button', { class: 'btn danger', text: 'Reset', onclick: () => { if (confirm('Erase history, memory, settings, photo and saved formulas on this device?')) { try { Object.keys(localStorage).filter((k) => k.startsWith('calc.')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ } (window.calcForget ? window.calcForget() : Promise.resolve()).then(() => location.reload()); } } }))
       );

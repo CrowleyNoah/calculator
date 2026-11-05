@@ -63,22 +63,9 @@
       m.querySelector('#cl-out').onclick = () => { if (confirm('Sign out? Your data stays on this device and online.')) { store(null); close(); banner(); } };
       return;
     }
-    const m = modal('<h3>Sign in</h3><p>We email you a code. No password.</p><input id="cl-em" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com"><button id="cl-send">Send code</button><button id="cl-x" class="g">Cancel</button><div class="e" id="cl-e"></div>');
-    const err = (t) => { m.querySelector('#cl-e').textContent = t || ''; };
+    const m = modal('<h3>Sign in</h3><p>Sign in with Google to keep your data safe online. Restores automatically on any phone.</p><button id="cl-g">Continue with Google</button><button id="cl-x" class="g">Cancel</button>');
     m.querySelector('#cl-x').onclick = close;
-    m.querySelector('#cl-send').onclick = async () => {
-      const email = m.querySelector('#cl-em').value.trim().toLowerCase(); if (!/^\S+@\S+\.\S+$/.test(email)) return err('Enter a valid email.');
-      err('Sending...');
-      try { await api('/auth/v1/otp?redirect_to=' + encodeURIComponent(location.origin + location.pathname), { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, create_user: true }) }); } catch (e) { return err(e.message); }
-      m.firstChild.innerHTML = '<h3>Check your email</h3><p>Sent to ' + email.replace(/</g, '') + '. Tap the link in the email on this phone (check spam too). If the email shows a code instead, type it here.</p><input id="cl-cd" inputmode="numeric" autocomplete="one-time-code" placeholder="Code (if there is one)"><button id="cl-go">Sign in with code</button><button id="cl-x" class="g">Cancel</button><div class="e" id="cl-e"></div>';
-      m.querySelector('#cl-x').onclick = close;
-      m.querySelector('#cl-go').onclick = async () => {
-        const code = m.querySelector('#cl-cd').value.replace(/\s/g, ''); if (code.length < 4) return err('Enter the code.'); err('Checking...');
-        try { store(mk(await api('/auth/v1/verify', { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'email', email, token: code }) }))); } catch (e) { return err(e.message); }
-        try { const r = await reconcile(true); if (r && r.choose) return choose(r.choose); } catch (e) { state = 'err'; }
-        const b = document.getElementById('cl-bn'); if (b) b.remove(); close(); start();
-      };
-    };
+    m.querySelector('#cl-g').onclick = () => { location.href = URL_ + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(location.origin + location.pathname); };
   }
   window.addEventListener('storage', (e) => { if (e.key === SK && e.newValue && !sess) { try { sess = JSON.parse(e.newValue); } catch (x) { return; } finishSignIn(); } });
   async function finishSignIn() {
@@ -107,7 +94,7 @@
     if (!configured() || sess || document.getElementById('cl-bn')) return;
     let d = null; try { d = sessionStorage.getItem(DAY); } catch (e) { /* ignore */ }
     if (d) return; ensureCss();
-    const b = el('<div id="cl-bn"><span>' + (fresh(O.read()) ? 'Sign in to restore your save' : 'Sign in to back up your save online') + '</span><button id="cl-si">Sign in</button><button class="x" id="cl-no" aria-label="Dismiss">✕</button></div>');
+    const b = el('<div id="cl-bn"><span>' + (fresh(O.read()) ? 'Sign in with Google to restore your save' : 'Sign in with Google to back up your save') + '</span><button id="cl-si">Sign in</button><button class="x" id="cl-no" aria-label="Dismiss">✕</button></div>');
     document.body.appendChild(b);
     b.querySelector('#cl-si').onclick = open; b.querySelector('#cl-no').onclick = () => { try { sessionStorage.setItem(DAY, '1'); } catch (e) { /* ignore */ } b.remove(); };
   }
