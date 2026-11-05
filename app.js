@@ -19,7 +19,7 @@
   /* ---------------- storage ---------------- */
   const store = {
     get(k, d) { try { const v = localStorage.getItem('calc.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem('calc.' + k, JSON.stringify(v)); } catch (e) { /* storage full / blocked */ } },
+    set(k, v) { if (window.calcNoSave) return; try { localStorage.setItem('calc.' + k, JSON.stringify(v)); } catch (e) { /* storage full / blocked */ } },
     del(k) { try { localStorage.removeItem('calc.' + k); } catch (e) { /* ignore */ } }
   };
 
@@ -610,8 +610,9 @@
       );
       const card3 = h('div', { class: 'card' });
       card3.append(
+        h('div', { class: 'setrow' }, h('div', {}, h('div', { text: 'Cloud save' }), h('small', { text: 'Sign in to keep your data online' })), h('button', { class: 'btn ghost', text: 'Open', onclick: () => { if (window.Cloud) Cloud.open(); } })),
         h('div', { class: 'setrow' }, h('div', { text: 'Clear history' }), h('button', { class: 'btn ghost', text: 'Clear', onclick: () => { S.history = []; store.set('history', []); toast('History cleared'); } })),
-        h('div', { class: 'setrow' }, h('div', { text: 'Reset everything', }), h('button', { class: 'btn danger', text: 'Reset', onclick: () => { if (confirm('Erase history, memory, settings, photo and saved formulas on this device?')) { try { Object.keys(localStorage).filter((k) => k.startsWith('calc.')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ } location.reload(); } } }))
+        h('div', { class: 'setrow' }, h('div', { text: 'Reset everything', }), h('button', { class: 'btn danger', text: 'Reset', onclick: () => { if (confirm('Erase history, memory, settings, photo and saved formulas on this device?')) { try { Object.keys(localStorage).filter((k) => k.startsWith('calc.')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ } (window.calcForget ? window.calcForget() : Promise.resolve()).then(() => location.reload()); } } }))
       );
       body.append(card1, card2, card3, h('div', { class: 'hint', text: 'To change the name, colors, or which features and tools are on, edit config.js (see README). Version 1.0' }));
     });
@@ -626,7 +627,19 @@
 
   /* ---------------- go ---------------- */
   render();
+  if (window.Cloud) Cloud.init({
+    app: 'calculator',
+    read: () => { try { const o = {}; Object.keys(localStorage).filter((k) => k.startsWith('calc.')).sort().forEach((k) => { o[k] = localStorage.getItem(k); }); return Object.keys(o).length ? JSON.stringify(o) : null; } catch (e) { return null; } },
+    write: (s) => { window.calcNoSave = true; try { const o = JSON.parse(s); Object.keys(localStorage).filter((k) => k.startsWith('calc.')).forEach((k) => localStorage.removeItem(k)); Object.keys(o).forEach((k) => localStorage.setItem(k, o[k])); } catch (e) { /* ignore */ } },
+    score: (s) => { try { const o = JSON.parse(s); let n = o['calc.photoData'] ? 1000 : 0; try { n += (JSON.parse(o['calc.history'] || '[]').length) * 10; } catch (e) { /* ignore */ } return n; } catch (e) { return 0; } },
+    describe: (s) => { try { const o = JSON.parse(s); return (o['calc.photoData'] ? 'photo, ' : 'no photo, ') + JSON.parse(o['calc.history'] || '[]').length + ' history items'; } catch (e) { return 'empty'; } }
+  });
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
+    const had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) location.reload(); });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      const check = () => { try { reg.update(); } catch (e) { /* ignore */ } };
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); setInterval(check, 5 * 60 * 1000);
+    }).catch(() => { /* offline support is optional */ });
   }
 })();
