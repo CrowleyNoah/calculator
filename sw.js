@@ -1,6 +1,6 @@
 /* Service worker: makes the calculator work offline.
    Bump VERSION whenever you change files so phones pick up the update. */
-const VERSION = 'calc-v9';
+const VERSION = 'calc-v11';
 const FILES = ['./', 'index.html', 'styles.css', 'persist.js', 'cloud.js', 'config.js', 'engine.js', 'tools.js', 'app.js', 'manifest.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
